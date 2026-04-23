@@ -178,4 +178,70 @@ async def on_ready():
     print(f'✅ Bot online: {bot.user}')
     await bot.change_presence(activity=discord.Game(name="!activate | Cawaii Loader"))
 
+# Добавь это в КОНЕЦ файла с ботом, перед bot.run(TOKEN)
+
+@bot.command(name='check')
+async def check_key(ctx, key: str = None):
+    """!check КЛЮЧ - проверить активирован ли ключ"""
+    if not key:
+        await ctx.send("❌ Использование: `!check КЛЮЧ`")
+        return
+    
+    # Проверяем в базе данных
+    cursor.execute('SELECT * FROM codes WHERE code = ? AND used = 1', (key,))
+    result = cursor.fetchone()
+    
+    if result:
+        # Ключ активирован
+        embed = discord.Embed(
+            title="✅ КЛЮЧ АКТИВИРОВАН",
+            description=f"Ключ `{key}` действителен! Можешь загружать скрипт.",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
+    else:
+        # Проверяем существует ли ключ
+        cursor.execute('SELECT * FROM codes WHERE code = ?', (key,))
+        exists = cursor.fetchone()
+        
+        if exists:
+            embed = discord.Embed(
+                title="⚠️ КЛЮЧ НЕ АКТИВИРОВАН",
+                description=f"Ключ `{key}` существует, но ещё не активирован. Используй `!activate {key}`",
+                color=discord.Color.orange()
+            )
+        else:
+            embed = discord.Embed(
+                title="❌ НЕВЕРНЫЙ КЛЮЧ",
+                description=f"Ключ `{key}` не найден в системе",
+                color=discord.Color.red()
+            )
+        await ctx.send(embed=embed)
+
+@bot.command(name='activate')
+async def activate_key(ctx, key: str = None):
+    """!activate КЛЮЧ - активировать ключ для себя"""
+    if not key:
+        await ctx.send("❌ Использование: `!activate КЛЮЧ`")
+        return
+    
+    cursor.execute('SELECT * FROM codes WHERE code = ? AND used = 0', (key,))
+    result = cursor.fetchone()
+    
+    if result:
+        # Активируем ключ
+        expires_at = int(time.time()) + (result[2] * 86400)  # result[2] - это days
+        cursor.execute('UPDATE codes SET used = 1, discord_id = ?, expires_at = ? WHERE code = ?', 
+                       (str(ctx.author.id), expires_at, key))
+        conn.commit()
+        
+        embed = discord.Embed(
+            title="✅ КЛЮЧ АКТИВИРОВАН",
+            description=f"Ключ `{key}` активирован для {ctx.author.mention}",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send(f"❌ Ключ `{key}` не найден или уже использован")
+        
 bot.run(TOKEN)
