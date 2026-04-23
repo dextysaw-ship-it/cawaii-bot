@@ -100,7 +100,7 @@ async def gen_code(ctx, days: int = 30):
     )
     await ctx.send(embed=embed)
 
-@bot.command(name='activate')
+@bot.command(name='use')
 async def activate(ctx, code: str = None):
     if not code:
         await ctx.send("❌ Usage: `!activate CODE`")
